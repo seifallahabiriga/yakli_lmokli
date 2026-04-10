@@ -1,0 +1,2 @@
+class OpportunityService:
+    pass
