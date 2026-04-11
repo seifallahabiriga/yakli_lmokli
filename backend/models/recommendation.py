@@ -4,8 +4,8 @@ from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, Text, UniqueC
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.enums import RecommendationStatus
-from db.base import Base
+from backend.core.enums import RecommendationStatus
+from backend.db.base import Base
 
 
 class Recommendation(Base):

@@ -2,9 +2,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.enums import RecommendationStatus
-from schemas.opportunity import OpportunitySummary
-from schemas.user import UserSummary
+from backend.core.enums import RecommendationStatus
+from backend.schemas.opportunity import OpportunitySummary
+from backend.schemas.user import UserSummary
 
 
 # =============================================================================

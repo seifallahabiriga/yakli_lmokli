@@ -4,8 +4,8 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.enums import NotificationStatus, NotificationType
-from db.base import Base
+from backend.core.enums import NotificationStatus, NotificationType
+from backend.db.base import Base
 
 
 class Notification(Base):

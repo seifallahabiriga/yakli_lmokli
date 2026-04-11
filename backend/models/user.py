@@ -4,8 +4,8 @@ from sqlalchemy import Boolean, DateTime, Enum, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.enums import AcademicLevel, UserRole
-from db.base import Base
+from backend.core.enums import AcademicLevel, UserRole
+from backend.db.base import Base
 
 
 class User(Base):

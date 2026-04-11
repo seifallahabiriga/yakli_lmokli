@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, Stri
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.enums import (
+from backend.core.enums import (
     OpportunityDomain,
     OpportunityLevel,
     OpportunityLocationType,
@@ -12,7 +12,7 @@ from core.enums import (
     OpportunityType,
     ScraperType,
 )
-from db.base import Base
+from backend.db.base import Base
 
 
 class Opportunity(Base):

@@ -121,6 +121,29 @@ class Settings(BaseSettings):
     CLUSTER_RECOMPUTE_INTERVAL: int = 60 * 60 * 12     # every 12 h
     RECOMMENDATION_RECOMPUTE_INTERVAL: int = 60 * 60 * 6
 
+    # Specific Celery queues and task retries
+    CELERY_QUEUE_SCRAPING: str = "scraping"
+    CELERY_TASK_MAX_RETRIES_SCRAPING: int = 3
+    CELERY_TASK_RETRY_DELAY_SCRAPING: int = 60
+
+    CELERY_QUEUE_ML: str = "ml"
+    CELERY_TASK_MAX_RETRIES_ML: int = 2
+    CELERY_TASK_RETRY_DELAY_ML_CLASSIFIER: int = 120
+    CELERY_TASK_RETRY_DELAY_ML_FAST: int = 30
+    CELERY_TASK_MAX_RETRIES_ML_HEAVY: int = 1
+    CELERY_TASK_RETRY_DELAY_ML_HEAVY: int = 300
+
+    CELERY_QUEUE_NOTIFICATIONS: str = "notifications"
+    CELERY_TASK_MAX_RETRIES_NOTIFICATIONS: int = 2
+    CELERY_TASK_RETRY_DELAY_NOTIFICATIONS: int = 60
+    CELERY_TASK_RETRY_DELAY_NOTIFICATIONS_FAST: int = 30
+
+    CELERY_QUEUE_DEFAULT: str = "default"
+    CELERY_TASK_MAX_RETRIES_DEFAULT: int = 2
+    CELERY_TASK_RETRY_DELAY_DEFAULT: int = 60
+    CELERY_TASK_MAX_RETRIES_CLEANUP: int = 1
+    CELERY_TASK_RETRY_DELAY_CLEANUP: int = 120
+
     # -------------------------------------------------------------------------
     # ML — local models
     # -------------------------------------------------------------------------

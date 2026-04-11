@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 
-from models.cluster import OpportunityCluster
-from repositories.base_repository import BaseRepository
+from backend.models.cluster import OpportunityCluster
+from backend.repositories.base_repository import BaseRepository
 
 
 class ClusterRepository(BaseRepository[OpportunityCluster]):

@@ -2,8 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.enums import NotificationStatus, NotificationType
-from schemas.opportunity import OpportunitySummary
+from backend.core.enums import NotificationStatus, NotificationType
+from backend.schemas.opportunity import OpportunitySummary
 
 
 # =============================================================================

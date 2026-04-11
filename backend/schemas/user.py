@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from core.enums import AcademicLevel, UserRole
+from backend.core.enums import AcademicLevel, UserRole
 
 
 # =============================================================================

@@ -15,10 +15,29 @@ from datetime import UTC, datetime, timedelta
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
 
-from queue.celery_app import celery_app
+from backend.queue.celery_app import celery_app
+from backend.core.config import get_settings
+
+from sqlalchemy import and_, update, delete
+from backend.db.session import get_sync_db
+from backend.queue.redis_client import get_sync_redis
+from backend.workers.worker_app.job_runner import (
+    run_scraper_agent,
+    run_classifier_agent,
+    embed_opportunity,
+    run_cluster_agent,
+    run_recommendation_agent,
+    run_deadline_reminder_agent,
+    run_new_opportunity_notifier,
+    run_recommendation_notifier,
+    save_faiss_index
+)
+from backend.core.enums import OpportunityStatus, NotificationStatus
+from backend.models.opportunity import Opportunity
+from backend.models.notification import Notification
 
 logger = logging.getLogger(__name__)
-
+settings = get_settings()
 
 # =============================================================================
 # Base task class — shared retry / error handling
@@ -65,8 +84,6 @@ class BaseTask(Task):
 
 def _get_db_and_cache():
     """Returns (sync_db_session, sync_redis_client) for use inside a task."""
-    from db.session import get_sync_db
-    from queue.redis_client import get_sync_redis
     return get_sync_db(), get_sync_redis()
 
 
@@ -78,14 +95,13 @@ def _get_db_and_cache():
     base=BaseTask,
     name="workers.tasks.run_internship_scraper",
     bind=True,
-    queue="scraping",
-    max_retries=3,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_SCRAPING,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_SCRAPING,
 )
 def run_internship_scraper(self: Task) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_scraper_agent
         result = run_scraper_agent("internship", db, cache)
         db.commit()
         return result
@@ -103,14 +119,13 @@ def run_internship_scraper(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_scholarship_scraper",
     bind=True,
-    queue="scraping",
-    max_retries=3,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_SCRAPING,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_SCRAPING,
 )
 def run_scholarship_scraper(self: Task) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_scraper_agent
         result = run_scraper_agent("scholarship", db, cache)
         db.commit()
         return result
@@ -128,14 +143,13 @@ def run_scholarship_scraper(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_project_scraper",
     bind=True,
-    queue="scraping",
-    max_retries=3,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_SCRAPING,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_SCRAPING,
 )
 def run_project_scraper(self: Task) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_scraper_agent
         result = run_scraper_agent("project", db, cache)
         db.commit()
         return result
@@ -153,14 +167,13 @@ def run_project_scraper(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_certification_scraper",
     bind=True,
-    queue="scraping",
-    max_retries=3,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_SCRAPING,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_SCRAPING,
 )
 def run_certification_scraper(self: Task) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_scraper_agent
         result = run_scraper_agent("certification", db, cache)
         db.commit()
         return result
@@ -178,14 +191,13 @@ def run_certification_scraper(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_postdoc_scraper",
     bind=True,
-    queue="scraping",
-    max_retries=3,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_SCRAPING,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_SCRAPING,
 )
 def run_postdoc_scraper(self: Task) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_scraper_agent
         result = run_scraper_agent("postdoc", db, cache)
         db.commit()
         return result
@@ -207,15 +219,14 @@ def run_postdoc_scraper(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_classifier",
     bind=True,
-    queue="ml",
-    max_retries=2,
-    default_retry_delay=120,
+    queue=settings.CELERY_QUEUE_ML,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_ML_CLASSIFIER,
 )
 def run_classifier(self: Task) -> dict:
     """Embeds and classifies all DRAFT opportunities without embeddings."""
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_classifier_agent
         result = run_classifier_agent(db, cache)
         db.commit()
         return result
@@ -233,15 +244,14 @@ def run_classifier(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.embed_single_opportunity",
     bind=True,
-    queue="ml",
-    max_retries=2,
-    default_retry_delay=30,
+    queue=settings.CELERY_QUEUE_ML,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_ML_FAST,
 )
 def embed_single_opportunity(self: Task, opportunity_id: int) -> dict:
     """Embeds a single opportunity immediately after scraping."""
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import embed_opportunity
         result = embed_opportunity(opportunity_id, db)
         db.commit()
         return result
@@ -259,15 +269,14 @@ def embed_single_opportunity(self: Task, opportunity_id: int) -> dict:
     base=BaseTask,
     name="workers.tasks.run_cluster_recompute",
     bind=True,
-    queue="ml",
-    max_retries=1,
-    default_retry_delay=300,
+    queue=settings.CELERY_QUEUE_ML,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_ML_HEAVY,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_ML_HEAVY,
 )
 def run_cluster_recompute(self: Task) -> dict:
     """Full cluster recompute: wipe clusters, re-cluster all embedded opportunities."""
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_cluster_agent
         result = run_cluster_agent(db, cache)
         db.commit()
         return result
@@ -285,9 +294,9 @@ def run_cluster_recompute(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.run_recommendation_recompute",
     bind=True,
-    queue="ml",
-    max_retries=1,
-    default_retry_delay=120,
+    queue=settings.CELERY_QUEUE_ML,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_ML_HEAVY,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_ML_CLASSIFIER,
 )
 def run_recommendation_recompute(self: Task, user_id: int | None = None) -> dict:
     """
@@ -297,7 +306,6 @@ def run_recommendation_recompute(self: Task, user_id: int | None = None) -> dict
     """
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_recommendation_agent
         result = run_recommendation_agent(db, cache, user_id=user_id)
         db.commit()
         return result
@@ -319,15 +327,14 @@ def run_recommendation_recompute(self: Task, user_id: int | None = None) -> dict
     base=BaseTask,
     name="workers.tasks.send_deadline_reminders",
     bind=True,
-    queue="notifications",
-    max_retries=2,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_NOTIFICATIONS,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_NOTIFICATIONS,
 )
 def send_deadline_reminders(self: Task) -> dict:
     """Notifies users about opportunities expiring within 3 days."""
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_deadline_reminder_agent
         result = run_deadline_reminder_agent(db, cache, within_days=3)
         db.commit()
         return result
@@ -345,15 +352,14 @@ def send_deadline_reminders(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.notify_new_opportunity",
     bind=True,
-    queue="notifications",
-    max_retries=2,
-    default_retry_delay=30,
+    queue=settings.CELERY_QUEUE_NOTIFICATIONS,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_NOTIFICATIONS_FAST,
 )
 def notify_new_opportunity(self: Task, opportunity_id: int) -> dict:
     """Notifies users whose profile matches a newly published opportunity."""
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_new_opportunity_notifier
         result = run_new_opportunity_notifier(opportunity_id, db, cache)
         db.commit()
         return result
@@ -371,16 +377,15 @@ def notify_new_opportunity(self: Task, opportunity_id: int) -> dict:
     base=BaseTask,
     name="workers.tasks.notify_new_recommendation",
     bind=True,
-    queue="notifications",
-    max_retries=2,
-    default_retry_delay=30,
+    queue=settings.CELERY_QUEUE_NOTIFICATIONS,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_NOTIFICATIONS_FAST,
 )
 def notify_new_recommendation(
     self: Task, user_id: int, recommendation_id: int
 ) -> dict:
     db, cache = _get_db_and_cache()
     try:
-        from workers.worker_app.job_runner import run_recommendation_notifier
         result = run_recommendation_notifier(user_id, recommendation_id, db, cache)
         db.commit()
         return result
@@ -402,15 +407,11 @@ def notify_new_recommendation(
     base=BaseTask,
     name="workers.tasks.expire_past_deadline_opportunities",
     bind=True,
-    queue="default",
-    max_retries=2,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_DEFAULT,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_DEFAULT,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_DEFAULT,
 )
 def expire_past_deadline_opportunities(self: Task) -> dict:
-    from sqlalchemy import and_, update
-    from core.enums import OpportunityStatus
-    from models.opportunity import Opportunity
-
     db, _ = _get_db_and_cache()
     try:
         now = datetime.now(UTC)
@@ -440,16 +441,12 @@ def expire_past_deadline_opportunities(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.cleanup_archived_notifications",
     bind=True,
-    queue="default",
-    max_retries=1,
-    default_retry_delay=120,
+    queue=settings.CELERY_QUEUE_DEFAULT,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_CLEANUP,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_CLEANUP,
 )
 def cleanup_archived_notifications(self: Task) -> dict:
     """Purges archived notifications older than 30 days."""
-    from sqlalchemy import and_, delete
-    from core.enums import NotificationStatus
-    from models.notification import Notification
-
     db, _ = _get_db_and_cache()
     try:
         cutoff = datetime.now(UTC) - timedelta(days=30)
@@ -476,14 +473,13 @@ def cleanup_archived_notifications(self: Task) -> dict:
     base=BaseTask,
     name="workers.tasks.persist_faiss_index",
     bind=True,
-    queue="ml",
-    max_retries=2,
-    default_retry_delay=60,
+    queue=settings.CELERY_QUEUE_ML,
+    max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,
+    default_retry_delay=settings.CELERY_TASK_RETRY_DELAY_DEFAULT,
 )
 def persist_faiss_index(self: Task) -> dict:
     """Serializes the in-memory FAISS index to disk for crash recovery."""
     try:
-        from workers.worker_app.job_runner import save_faiss_index
         return save_faiss_index()
     except Exception as exc:
         raise self.retry(exc=exc)

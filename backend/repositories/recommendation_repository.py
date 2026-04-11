@@ -1,9 +1,9 @@
 from sqlalchemy import and_, func, select
 
-from core.enums import RecommendationStatus
-from models.recommendation import Recommendation
-from repositories.base_repository import BaseRepository
-from schemas.recommendation import RecommendationFilter
+from backend.core.enums import RecommendationStatus
+from backend.models.recommendation import Recommendation
+from backend.repositories.base_repository import BaseRepository
+from backend.schemas.recommendation import RecommendationFilter
 
 
 class RecommendationRepository(BaseRepository[Recommendation]):

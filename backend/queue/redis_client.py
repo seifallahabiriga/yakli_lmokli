@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 import redis.asyncio as aioredis
 from redis import Redis
 
-from core.config import get_settings
+from backend.core.config import get_settings
 
 settings = get_settings()
 

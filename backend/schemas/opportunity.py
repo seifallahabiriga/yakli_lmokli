@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
-from core.enums import (
+from backend.core.enums import (
     OpportunityDomain,
     OpportunityLevel,
     OpportunityLocationType,

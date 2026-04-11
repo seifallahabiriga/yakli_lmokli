@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 
 from sqlalchemy import and_, func, or_, select, text
 
-from core.enums import OpportunityDomain, OpportunityLevel, OpportunityStatus, OpportunityType
-from models.opportunity import Opportunity
-from repositories.base_repository import BaseRepository
-from schemas.opportunity import OpportunityFilter
+from backend.core.enums import OpportunityDomain, OpportunityLevel, OpportunityStatus, OpportunityType
+from backend.models.opportunity import Opportunity
+from backend.repositories.base_repository import BaseRepository
+from backend.schemas.opportunity import OpportunityFilter
 
 
 class OpportunityRepository(BaseRepository[Opportunity]):

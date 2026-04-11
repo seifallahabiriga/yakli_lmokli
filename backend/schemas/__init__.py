@@ -1,4 +1,4 @@
-from schemas.cluster import (
+from backend.schemas.cluster import (
     ClusterCreate,
     ClusterListResponse,
     ClusterPublic,
@@ -6,7 +6,7 @@ from schemas.cluster import (
     ClusterUpdate,
     ClusterWithOpportunities,
 )
-from schemas.notification import (
+from backend.schemas.notification import (
     NotificationBulkStatusUpdate,
     NotificationCreate,
     NotificationFilter,
@@ -16,7 +16,7 @@ from schemas.notification import (
     NotificationSummary,
     NotificationUpdate,
 )
-from schemas.opportunity import (
+from backend.schemas.opportunity import (
     OpportunityCreate,
     OpportunityFilter,
     OpportunityListResponse,
@@ -24,7 +24,7 @@ from schemas.opportunity import (
     OpportunitySummary,
     OpportunityUpdate,
 )
-from schemas.recommendation import (
+from backend.schemas.recommendation import (
     RecommendationCreate,
     RecommendationFilter,
     RecommendationListResponse,
@@ -34,7 +34,7 @@ from schemas.recommendation import (
     RecommendationUpdate,
     RecommendationWithUser,
 )
-from schemas.user import (
+from backend.schemas.user import (
     LoginRequest,
     RefreshRequest,
     TokenPayload,

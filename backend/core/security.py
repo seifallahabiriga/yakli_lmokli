@@ -4,8 +4,8 @@ from typing import Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from core.config import get_settings
-from core.exceptions import TokenExpiredError, TokenInvalidError
+from backend.core.config import get_settings
+from backend.core.exceptions import TokenExpiredError, TokenInvalidError
 
 settings = get_settings()
 

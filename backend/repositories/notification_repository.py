@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 
 from sqlalchemy import and_, func, select
 
-from core.enums import NotificationStatus, NotificationType
-from models.notification import Notification
-from repositories.base_repository import BaseRepository
-from schemas.notification import NotificationFilter
+from backend.core.enums import NotificationStatus, NotificationType
+from backend.models.notification import Notification
+from backend.repositories.base_repository import BaseRepository
+from backend.schemas.notification import NotificationFilter
 
 
 class NotificationRepository(BaseRepository[Notification]):

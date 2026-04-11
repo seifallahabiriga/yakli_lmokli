@@ -12,7 +12,7 @@ optionally track task state via GET /tasks/{task_id}.
 
 from celery.result import AsyncResult
 
-from queue.celery_app import celery_app
+from backend.queue.celery_app import celery_app
 
 
 # =============================================================================
