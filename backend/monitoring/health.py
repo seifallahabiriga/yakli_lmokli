@@ -1,8 +1,8 @@
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from db.session import async_engine
-from queue.redis_client import async_redis_cache
+from backend.db.session import async_engine
+from backend.queue.redis_client import async_redis_cache
 
 
 async def build_health_response() -> JSONResponse:

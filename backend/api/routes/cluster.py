@@ -32,7 +32,7 @@ async def list_clusters(
     Used by the dashboard cluster explorer sidebar.
     """
     import json
-    from queue.redis_client import CacheKeys
+    from backend.queue.redis_client import CacheKeys
 
     cache_key = CacheKeys.cluster_list()
     cached = await cache.get(cache_key)
@@ -46,7 +46,7 @@ async def list_clusters(
     summaries = [ClusterSummary.model_validate(c) for c in clusters]
     response = ClusterListResponse(items=summaries, total=total)
 
-    from core.config import get_settings
+    from backend.core.config import get_settings
     settings = get_settings()
     await cache.setex(
         cache_key,
@@ -87,7 +87,7 @@ async def get_cluster_with_opportunities(
     Returns the cluster metadata plus a page of its member opportunities.
     Used by the cluster detail view in the dashboard.
     """
-    from repositories.opportunity_repository import OpportunityRepository
+    from backend.repositories.opportunity_repository import OpportunityRepository
 
     cluster_repo = ClusterRepository(db)
     cluster = await cluster_repo.get_by_id(cluster_id)
