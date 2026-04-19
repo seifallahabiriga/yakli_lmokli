@@ -1,54 +1,60 @@
-from datetime import UTC, datetime
-from sqlalchemy import select
-from backend.core.enums import OpportunityStatus
-from backend.models.opportunity import Opportunity
-from backend.workers.worker_app.agents.base_agent import BaseAgent
-from backend.workers.worker_app.ml.embedder import get_encoder, build_embedding_text
-from backend.workers.worker_app.ml.tagger import extract_tags
-from backend.workers.worker_app.ml.clusterer import incremental_cluster_assign
-import numpy as np
+from __future__ import annotations
 
-class ClassifierAgent(BaseAgent):
-    def run(self) -> dict:
-        import logging
-        logger = logging.getLogger(__name__)
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+from backend.core.enums import OpportunityStatus
+from backend.workers.worker_app.agents.base_agent import ObservatoryAgent
+from backend.workers.worker_app.ml import embedder, faiss_store, tagger
+from backend.workers.worker_app.utils import build_embedding_text
+
+if TYPE_CHECKING:
+    from backend.workers.worker_app.agents.coordinator_agent import ObservatoryModel
+
+
+class ClassifierAgent(ObservatoryAgent):
+
+    def __init__(self, model: "ObservatoryModel", db, cache) -> None:
+        super().__init__(model, db, cache)
+
+    def step(self) -> None:
+        from sqlalchemy import select
+        from backend.models.opportunity import Opportunity
 
         rows = self.db.execute(
             select(Opportunity).where(Opportunity.embedding.is_(None))
         ).scalars().all()
 
         if not rows:
-            logger.info("Classifier: no unembedded opportunities found")
-            return {"embedded": 0, "assigned": 0}
+            self.logger.info("ClassifierAgent: no unembedded opportunities")
+            self.last_result = {"embedded": 0, "assigned": 0}
+            return
 
-        logger.info(f"Classifier: embedding {len(rows)} opportunities")
+        self.logger.info("ClassifierAgent: embedding %d opportunities", len(rows))
 
-        encoder = get_encoder()
         texts = [build_embedding_text(opp) for opp in rows]
-
-        embeddings: np.ndarray = encoder.encode(
-            texts,
-            batch_size=32,
-            show_progress_bar=False,
-            normalize_embeddings=True,
-        )
+        embeddings = embedder.encode(texts)
 
         now = datetime.now(UTC)
+        assigned = 0
 
-        for opp, embedding in zip(rows, embeddings):
-            opp.embedding = embedding.tolist()
+        for opp, vec in zip(rows, embeddings):
+            opp.embedding = vec.tolist()
             opp.classified_at = now
             opp.needs_cluster_assignment = True
             opp.status = OpportunityStatus.ACTIVE
+            opp.tags = tagger.enrich_opportunity_tags(opp)
 
-            extra_tags = extract_tags(opp.title, opp.description or "")
-            if extra_tags:
-                existing = set(opp.tags or [])
-                opp.tags = list(existing | extra_tags)
+            cluster_db_id = faiss_store.search_nearest(vec)
+            if cluster_db_id is not None:
+                opp.cluster_id = cluster_db_id
+                opp.needs_cluster_assignment = False
+                assigned += 1
 
         self.db.flush()
 
-        assigned = incremental_cluster_assign(rows, embeddings, self.db)
-
-        logger.info(f"Classifier done — embedded: {len(rows)}, cluster-assigned: {assigned}")
-        return {"embedded": len(rows), "assigned": assigned}
+        self.logger.info(
+            "ClassifierAgent done — embedded: %d, assigned: %d",
+            len(rows), assigned,
+        )
+        self.last_result = {"embedded": len(rows), "assigned": assigned}

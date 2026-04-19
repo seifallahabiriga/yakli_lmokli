@@ -2,7 +2,7 @@
 Producer — the FastAPI side of the queue boundary.
 
 Rules:
-  - Routes and services NEVER import from workers.tasks directly.
+  - Routes and services NEVER import from backend.workers.tasks directly.
   - They call functions in this module, which enqueue the task via .delay() or .apply_async().
   - This keeps the import graph clean: FastAPI → producer → Celery → workers.
 
@@ -21,35 +21,35 @@ from backend.queue.celery_app import celery_app
 
 def enqueue_internship_scraper() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.run_internship_scraper",
+        "backend.workers.tasks.run_internship_scraper",
         queue="scraping",
     )
 
 
 def enqueue_scholarship_scraper() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.run_scholarship_scraper",
+        "backend.workers.tasks.run_scholarship_scraper",
         queue="scraping",
     )
 
 
 def enqueue_project_scraper() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.run_project_scraper",
+        "backend.workers.tasks.run_project_scraper",
         queue="scraping",
     )
 
 
 def enqueue_certification_scraper() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.run_certification_scraper",
+        "backend.workers.tasks.run_certification_scraper",
         queue="scraping",
     )
 
 
 def enqueue_postdoc_scraper() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.run_postdoc_scraper",
+        "backend.workers.tasks.run_postdoc_scraper",
         queue="scraping",
     )
 
@@ -72,7 +72,7 @@ def enqueue_all_scrapers() -> list[AsyncResult]:
 def enqueue_classifier() -> AsyncResult:
     """Classifies all DRAFT opportunities that don't yet have an embedding."""
     return celery_app.send_task(
-        "workers.tasks.run_classifier",
+        "backend.workers.tasks.run_classifier",
         queue="ml",
     )
 
@@ -80,7 +80,7 @@ def enqueue_classifier() -> AsyncResult:
 def enqueue_cluster_recompute() -> AsyncResult:
     """Triggers a full cluster recompute cycle."""
     return celery_app.send_task(
-        "workers.tasks.run_cluster_recompute",
+        "backend.workers.tasks.run_cluster_recompute",
         queue="ml",
     )
 
@@ -88,7 +88,7 @@ def enqueue_cluster_recompute() -> AsyncResult:
 def enqueue_persist_faiss_index() -> AsyncResult:
     """Serializes the in-memory FAISS index to disk on demand."""
     return celery_app.send_task(
-        "workers.tasks.persist_faiss_index",
+        "backend.workers.tasks.persist_faiss_index",
         queue="ml",
     )
 
@@ -102,7 +102,7 @@ def enqueue_recommendation_recompute(user_id: int | None = None) -> AsyncResult:
                  If None, recomputes for all active users (scheduled run).
     """
     return celery_app.send_task(
-        "workers.tasks.run_recommendation_recompute",
+        "backend.workers.tasks.run_recommendation_recompute",
         args=[user_id],
         queue="ml",
     )
@@ -115,7 +115,7 @@ def enqueue_opportunity_embedding(opportunity_id: int) -> AsyncResult:
     rather than waiting for the next scheduled classifier run.
     """
     return celery_app.send_task(
-        "workers.tasks.embed_single_opportunity",
+        "backend.workers.tasks.embed_single_opportunity",
         args=[opportunity_id],
         queue="ml",
     )
@@ -127,7 +127,7 @@ def enqueue_opportunity_embedding(opportunity_id: int) -> AsyncResult:
 
 def enqueue_deadline_reminders() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.send_deadline_reminders",
+        "backend.workers.tasks.send_deadline_reminders",
         queue="notifications",
     )
 
@@ -138,7 +138,7 @@ def enqueue_new_opportunity_notifications(opportunity_id: int) -> AsyncResult:
     Called by the opportunity service after status transitions to ACTIVE.
     """
     return celery_app.send_task(
-        "workers.tasks.notify_new_opportunity",
+        "backend.workers.tasks.notify_new_opportunity",
         args=[opportunity_id],
         queue="notifications",
     )
@@ -148,7 +148,7 @@ def enqueue_recommendation_notification(
     user_id: int, recommendation_id: int
 ) -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.notify_new_recommendation",
+        "backend.workers.tasks.notify_new_recommendation",
         args=[user_id, recommendation_id],
         queue="notifications",
     )
@@ -160,14 +160,14 @@ def enqueue_recommendation_notification(
 
 def enqueue_expire_opportunities() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.expire_past_deadline_opportunities",
+        "backend.workers.tasks.expire_past_deadline_opportunities",
         queue="default",
     )
 
 
 def enqueue_cleanup_notifications() -> AsyncResult:
     return celery_app.send_task(
-        "workers.tasks.cleanup_archived_notifications",
+        "backend.workers.tasks.cleanup_archived_notifications",
         queue="default",
     )
 

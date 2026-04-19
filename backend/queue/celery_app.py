@@ -14,7 +14,7 @@ celery_app = Celery(
     broker=settings.REDIS_BROKER_URL,
     backend=settings.REDIS_BACKEND_URL,
     include=[
-        "workers.tasks",  # all task definitions live here
+        "backend.workers.tasks",  # all task definitions live here
     ],
 )
 
@@ -69,66 +69,66 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     # --- Observer agents ---
     "scrape-internships": {
-        "task": "workers.tasks.run_internship_scraper",
+        "task": "backend.workers.tasks.run_internship_scraper",
         "schedule": settings.SCRAPE_INTERVAL_INTERNSHIPS,
         "options": {"queue": "scraping"},
     },
     "scrape-scholarships": {
-        "task": "workers.tasks.run_scholarship_scraper",
+        "task": "backend.workers.tasks.run_scholarship_scraper",
         "schedule": settings.SCRAPE_INTERVAL_SCHOLARSHIPS,
         "options": {"queue": "scraping"},
     },
     "scrape-projects": {
-        "task": "workers.tasks.run_project_scraper",
+        "task": "backend.workers.tasks.run_project_scraper",
         "schedule": settings.SCRAPE_INTERVAL_PROJECTS,
         "options": {"queue": "scraping"},
     },
     "scrape-certifications": {
-        "task": "workers.tasks.run_certification_scraper",
+        "task": "backend.workers.tasks.run_certification_scraper",
         "schedule": settings.SCRAPE_INTERVAL_CERTS,
         "options": {"queue": "scraping"},
     },
     "scrape-postdocs": {
-        "task": "workers.tasks.run_postdoc_scraper",
+        "task": "backend.workers.tasks.run_postdoc_scraper",
         "schedule": settings.SCRAPE_INTERVAL_SCHOLARSHIPS,  # same cadence as scholarships
         "options": {"queue": "scraping"},
     },
 
     # --- Analysis agents ---
     "classify-new-opportunities": {
-        "task": "workers.tasks.run_classifier",
+        "task": "backend.workers.tasks.run_classifier",
         "schedule": 60 * 15,  # every 15 min — picks up newly scraped drafts faster
         "options": {"queue": "ml"},
     },
     "recompute-clusters": {
-        "task": "workers.tasks.run_cluster_recompute",
+        "task": "backend.workers.tasks.run_cluster_recompute",
         "schedule": settings.CLUSTER_RECOMPUTE_INTERVAL,
         "options": {"queue": "ml"},
     },
     "recompute-recommendations": {
-        "task": "workers.tasks.run_recommendation_recompute",
+        "task": "backend.workers.tasks.run_recommendation_recompute",
         "schedule": settings.RECOMMENDATION_RECOMPUTE_INTERVAL,
         "options": {"queue": "ml"},
     },
     "persist-faiss-index": {
-        "task": "workers.tasks.persist_faiss_index",
+        "task": "backend.workers.tasks.persist_faiss_index",
         "schedule": 60 * 60,  # every 1h — saves in-memory index to disk
         "options": {"queue": "ml"},
     },
 
     # --- Maintenance ---
     "expire-past-deadlines": {
-        "task": "workers.tasks.expire_past_deadline_opportunities",
+        "task": "backend.workers.tasks.expire_past_deadline_opportunities",
         "schedule": crontab(hour="*/6"),  # every 6 hours
         "options": {"queue": "default"},
     },
     "send-deadline-reminders": {
-        "task": "workers.tasks.send_deadline_reminders",
+        "task": "backend.workers.tasks.send_deadline_reminders",
         "schedule": crontab(hour="8", minute="0"),  # daily at 08:00 UTC
         "options": {"queue": "notifications"},
     },
     "cleanup-archived-notifications": {
-        "task": "workers.tasks.cleanup_archived_notifications",
+        "task": "backend.workers.tasks.cleanup_archived_notifications",
         "schedule": crontab(hour="2", minute="0"),  # daily at 02:00 UTC
         "options": {"queue": "default"},
     },

@@ -76,7 +76,7 @@ def _get_db_and_cache():
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_internship_scraper",
+    name="backend.workers.tasks.run_internship_scraper",
     bind=True,
     queue=settings.CELERY_QUEUE_SCRAPING,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
@@ -99,7 +99,7 @@ def run_internship_scraper(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_scholarship_scraper",
+    name="backend.workers.tasks.run_scholarship_scraper",
     bind=True,
     queue=settings.CELERY_QUEUE_SCRAPING,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
@@ -122,7 +122,7 @@ def run_scholarship_scraper(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_project_scraper",
+    name="backend.workers.tasks.run_project_scraper",
     bind=True,
     queue=settings.CELERY_QUEUE_SCRAPING,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
@@ -145,7 +145,7 @@ def run_project_scraper(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_certification_scraper",
+    name="backend.workers.tasks.run_certification_scraper",
     bind=True,
     queue=settings.CELERY_QUEUE_SCRAPING,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
@@ -168,7 +168,7 @@ def run_certification_scraper(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_postdoc_scraper",
+    name="backend.workers.tasks.run_postdoc_scraper",
     bind=True,
     queue=settings.CELERY_QUEUE_SCRAPING,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_SCRAPING,
@@ -191,7 +191,7 @@ def run_postdoc_scraper(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_classifier",
+    name="backend.workers.tasks.run_classifier",
     bind=True,
     queue=settings.CELERY_QUEUE_ML,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,
@@ -214,7 +214,7 @@ def run_classifier(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.embed_single_opportunity",
+    name="backend.workers.tasks.embed_single_opportunity",
     bind=True,
     queue=settings.CELERY_QUEUE_ML,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,
@@ -237,7 +237,7 @@ def embed_single_opportunity(self: Task, opportunity_id: int) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_cluster_recompute",
+    name="backend.workers.tasks.run_cluster_recompute",
     bind=True,
     queue=settings.CELERY_QUEUE_ML,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_ML_HEAVY,
@@ -260,7 +260,7 @@ def run_cluster_recompute(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.run_recommendation_recompute",
+    name="backend.workers.tasks.run_recommendation_recompute",
     bind=True,
     queue=settings.CELERY_QUEUE_ML,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_ML_HEAVY,
@@ -283,7 +283,7 @@ def run_recommendation_recompute(self: Task, user_id: int | None = None) -> dict
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.send_deadline_reminders",
+    name="backend.workers.tasks.send_deadline_reminders",
     bind=True,
     queue=settings.CELERY_QUEUE_NOTIFICATIONS,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
@@ -306,7 +306,7 @@ def send_deadline_reminders(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.notify_new_opportunity",
+    name="backend.workers.tasks.notify_new_opportunity",
     bind=True,
     queue=settings.CELERY_QUEUE_NOTIFICATIONS,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
@@ -329,7 +329,7 @@ def notify_new_opportunity(self: Task, opportunity_id: int) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.notify_new_recommendation",
+    name="backend.workers.tasks.notify_new_recommendation",
     bind=True,
     queue=settings.CELERY_QUEUE_NOTIFICATIONS,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_NOTIFICATIONS,
@@ -354,7 +354,7 @@ def notify_new_recommendation(
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.expire_past_deadline_opportunities",
+    name="backend.workers.tasks.expire_past_deadline_opportunities",
     bind=True,
     queue=settings.CELERY_QUEUE_DEFAULT,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_DEFAULT,
@@ -387,7 +387,7 @@ def expire_past_deadline_opportunities(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.cleanup_archived_notifications",
+    name="backend.workers.tasks.cleanup_archived_notifications",
     bind=True,
     queue=settings.CELERY_QUEUE_DEFAULT,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_CLEANUP,
@@ -417,7 +417,7 @@ def cleanup_archived_notifications(self: Task) -> dict:
 
 @celery_app.task(
     base=BaseTask,
-    name="workers.tasks.persist_faiss_index",
+    name="backend.workers.tasks.persist_faiss_index",
     bind=True,
     queue=settings.CELERY_QUEUE_ML,
     max_retries=settings.CELERY_TASK_MAX_RETRIES_ML,

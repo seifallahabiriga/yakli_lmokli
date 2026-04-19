@@ -198,8 +198,8 @@ def drift_check(db: "Session") -> DriftReport:
         DriftReport with the decision and supporting numbers.
     """
     from sqlalchemy import func, select
-    from models.opportunity import Opportunity
-    from workers.worker_app.ml.faiss_store import is_ready
+    from backend.models.opportunity import Opportunity
+    from backend.workers.worker_app.ml.faiss_store import is_ready
 
     n_embedded: int = db.execute(
         select(func.count()).select_from(Opportunity).where(
@@ -312,7 +312,7 @@ def load_unassigned_embeddings(db: "Session") -> tuple[np.ndarray, list[int]]:
         Returns (empty array, []) when no unassigned opportunities exist.
     """
     from sqlalchemy import select
-    from models.opportunity import Opportunity
+    from backend.models.opportunity import Opportunity
 
     rows = db.execute(
         select(Opportunity.id, Opportunity.embedding).where(

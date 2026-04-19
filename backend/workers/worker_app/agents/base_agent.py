@@ -1,18 +1,31 @@
+from __future__ import annotations
+
 import logging
+from abc import abstractmethod
 from typing import TYPE_CHECKING
-from backend.core.config import get_settings
+
+from mesa import Agent
 
 if TYPE_CHECKING:
     from redis import Redis
     from sqlalchemy.orm import Session
+    from backend.workers.worker_app.agents.coordinator_agent import ObservatoryModel
 
-logger = logging.getLogger(__name__)
-settings = get_settings()
 
-class BaseAgent:
-    def __init__(self, db: Session, cache: Redis):
+class ObservatoryAgent(Agent):
+
+    def __init__(
+        self,
+        model: "ObservatoryModel",
+        db: "Session",
+        cache: "Redis",
+    ) -> None:
+        super().__init__(model)
         self.db = db
         self.cache = cache
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.last_result: dict = {}
 
-    def run(self, *args, **kwargs) -> dict:
-        raise NotImplementedError("Each agent must implement its own run method")
+    @abstractmethod
+    def step(self) -> None: 
+        ...

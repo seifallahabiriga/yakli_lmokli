@@ -218,3 +218,10 @@ def jaccard_overlap(set_a: set[str], set_b: set[str]) -> float:
 def clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
     """Clamps a float to [lo, hi]. Used in scoring to prevent out-of-range values."""
     return max(lo, min(hi, value))
+
+
+def centroid_version_hash(centroid: list[float]) -> str:
+    """Short SHA-1 fingerprint of a centroid vector. Stored in OpportunityCluster.centroid_version."""
+    import hashlib
+    import numpy as np
+    return hashlib.sha1(np.array(centroid, dtype=np.float32).tobytes()).hexdigest()[:16]
