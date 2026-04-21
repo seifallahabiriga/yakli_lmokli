@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -9,29 +10,38 @@ from backend.core.exceptions import TokenExpiredError, TokenInvalidError
 
 settings = get_settings()
 
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# =============================================================================
+# Password normalization (fix for bcrypt 72-byte limit)
+# =============================================================================
+
+def _normalize_password(password: str) -> str:
+    """
+    Converts any-length password into a fixed-length SHA-256 hex digest.
+    This avoids bcrypt's 72-byte limitation while preserving determinism.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
 # =============================================================================
 # Password hashing
 # =============================================================================
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(plain: str) -> str:
-    """Returns a bcrypt hash of the given plaintext password."""
-    return _pwd_context.hash(plain)
+    return _pwd_context.hash(_normalize_password(plain))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Returns True if the plaintext matches the stored hash."""
-    return _pwd_context.verify(plain, hashed)
+    return _pwd_context.verify(_normalize_password(plain), hashed)
 
 
 # =============================================================================
-# JWT — token creation
+# JWT creation
 # =============================================================================
 
 def _build_token(payload: dict[str, Any], expires_delta: timedelta) -> str:
-    """Internal helper — encodes a JWT with an expiry claim."""
     expire = datetime.now(UTC) + expires_delta
     return jwt.encode(
         {**payload, "exp": expire, "iat": datetime.now(UTC)},
@@ -41,19 +51,10 @@ def _build_token(payload: dict[str, Any], expires_delta: timedelta) -> str:
 
 
 def create_access_token(subject: int | str, extra: dict[str, Any] | None = None) -> str:
-    """
-    Creates a short-lived access token.
-
-    Args:
-        subject:  User ID (stored as the 'sub' claim).
-        extra:    Optional additional claims (e.g. {"role": "admin"}).
-
-    Returns:
-        Encoded JWT string.
-    """
     payload: dict[str, Any] = {"sub": str(subject), "type": "access"}
     if extra:
         payload.update(extra)
+
     return _build_token(
         payload,
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
@@ -61,12 +62,6 @@ def create_access_token(subject: int | str, extra: dict[str, Any] | None = None)
 
 
 def create_refresh_token(subject: int | str) -> str:
-    """
-    Creates a long-lived refresh token.
-
-    Refresh tokens carry only the subject claim — no role or extra data.
-    They are exchanged for a new access token at /auth/refresh.
-    """
     return _build_token(
         {"sub": str(subject), "type": "refresh"},
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
@@ -74,17 +69,10 @@ def create_refresh_token(subject: int | str) -> str:
 
 
 # =============================================================================
-# JWT — token verification
+# JWT verification
 # =============================================================================
 
 def _decode_token(token: str, expected_type: str) -> dict[str, Any]:
-    """
-    Internal helper — decodes and validates a JWT.
-
-    Raises:
-        TokenExpiredError:  Token is past its 'exp' claim.
-        TokenInvalidError:  Token is malformed, tampered, or wrong type.
-    """
     try:
         payload = jwt.decode(
             token,
@@ -103,34 +91,14 @@ def _decode_token(token: str, expected_type: str) -> dict[str, Any]:
 
 
 def verify_access_token(token: str) -> dict[str, Any]:
-    """
-    Verifies an access token and returns its payload.
-
-    Returns:
-        Decoded payload dict (includes 'sub', 'type', 'exp', 'iat', and any extras).
-
-    Raises:
-        TokenExpiredError | TokenInvalidError
-    """
-    return _decode_token(token, expected_type="access")
+    return _decode_token(token, "access")
 
 
 def verify_refresh_token(token: str) -> dict[str, Any]:
-    """
-    Verifies a refresh token and returns its payload.
-
-    Raises:
-        TokenExpiredError | TokenInvalidError
-    """
-    return _decode_token(token, expected_type="refresh")
+    return _decode_token(token, "refresh")
 
 
 def get_subject_from_token(token: str) -> str:
-    """
-    Convenience helper — extracts only the 'sub' claim from an access token.
-
-    Useful when you only need the user ID and don't care about other claims.
-    """
     payload = verify_access_token(token)
     sub = payload.get("sub")
     if not sub:
@@ -139,25 +107,10 @@ def get_subject_from_token(token: str) -> str:
 
 
 # =============================================================================
-# Token pair helper
+# Token pair
 # =============================================================================
 
-def create_token_pair(
-    user_id: int,
-    role: str,
-) -> dict[str, str]:
-    """
-    Creates an access + refresh token pair in one call.
-
-    Used at login and at /auth/refresh.
-
-    Returns:
-        {
-            "access_token": "...",
-            "refresh_token": "...",
-            "token_type": "bearer",
-        }
-    """
+def create_token_pair(user_id: int, role: str) -> dict[str, str]:
     return {
         "access_token": create_access_token(
             subject=user_id,
