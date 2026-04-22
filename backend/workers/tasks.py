@@ -15,12 +15,12 @@ from datetime import UTC, datetime, timedelta
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
 
-from backend.queue.celery_app import celery_app
+from backend.job_queue.celery_app import celery_app
 from backend.core.config import get_settings
 
 from sqlalchemy import and_, update, delete
 from backend.db.session import get_sync_db
-from backend.queue.redis_client import get_sync_redis
+from backend.job_queue.redis_client import get_sync_redis
 
 from backend.workers.worker_app.coordinator import (
     run_scraper_agent,

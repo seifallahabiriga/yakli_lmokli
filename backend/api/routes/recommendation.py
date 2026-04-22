@@ -12,7 +12,7 @@ from backend.schemas.recommendation import (
     RecommendationSummary,
 )
 from backend.core.exceptions import ForbiddenError, RecommendationNotFoundError
-from backend.queue.producer import enqueue_recommendation_recompute
+from backend.job_queue.producer import enqueue_recommendation_recompute
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 

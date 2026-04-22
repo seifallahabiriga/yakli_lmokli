@@ -19,11 +19,11 @@ from backend.core.enums import OpportunityStatus, UserRole
 from backend.core.exceptions import ConflictError, ForbiddenError, OpportunityNotFoundError
 from backend.models.opportunity import Opportunity
 from backend.models.user import User
-from backend.queue.producer import (
+from backend.job_queue.producer import (
     enqueue_new_opportunity_notifications,
     enqueue_opportunity_embedding,
 )
-from backend.queue.redis_client import CacheKeys
+from backend.job_queue.redis_client import CacheKeys
 from backend.repositories.opportunity_repository import OpportunityRepository
 from backend.schemas.opportunity import (
     OpportunityCreate,

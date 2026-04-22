@@ -38,7 +38,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         key = f"rate_limit:{client_ip}"
 
         try:
-            from backend.queue.redis_client import async_redis_cache as cache
+            from backend.job_queue.redis_client import async_redis_cache as cache
 
             count = await cache.incr(key)
 

@@ -25,8 +25,8 @@ from backend.db.session import close_db, init_db
 from backend.middleware.rate_limiter import RateLimiterMiddleware
 from backend.monitoring.health import build_health_response
 from backend.monitoring.metrics import http_request_counter, http_request_duration
-from backend.queue.producer import get_task_status
-from backend.queue.redis_client import close_redis, init_redis
+from backend.job_queue.producer import get_task_status
+from backend.job_queue.redis_client import close_redis, init_redis
 
 settings = get_settings()
 logger = logging.getLogger(__name__)

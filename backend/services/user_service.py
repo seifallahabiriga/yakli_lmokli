@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.core.enums import UserRole
 from backend.core.exceptions import ForbiddenError, UserNotFoundError
 from backend.models.user import User
-from backend.queue.producer import enqueue_recommendation_recompute
-from backend.queue.redis_client import CacheKeys
+from backend.job_queue.producer import enqueue_recommendation_recompute
+from backend.job_queue.redis_client import CacheKeys
 from backend.repositories.user_repository import UserRepository
 from backend.schemas.user import UserUpdate
 

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.deps import get_cache, get_current_admin, get_current_user, get_db
 from backend.core.exceptions import ClusterNotFoundError
 from backend.models.user import User
-from backend.queue.producer import enqueue_cluster_recompute
+from backend.job_queue.producer import enqueue_cluster_recompute
 from backend.repositories.cluster_repository import ClusterRepository
 from backend.schemas.cluster import (
     ClusterListResponse,
@@ -32,7 +32,7 @@ async def list_clusters(
     Used by the dashboard cluster explorer sidebar.
     """
     import json
-    from backend.queue.redis_client import CacheKeys
+    from backend.job_queue.redis_client import CacheKeys
 
     cache_key = CacheKeys.cluster_list()
     cached = await cache.get(cache_key)

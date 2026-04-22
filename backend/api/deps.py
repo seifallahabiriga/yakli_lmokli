@@ -21,7 +21,7 @@ from backend.core.exceptions import (
 from backend.core.security import verify_access_token
 from backend.db.session import get_async_db
 from backend.models.user import User
-from backend.queue.redis_client import get_async_redis
+from backend.job_queue.redis_client import get_async_redis
 from backend.repositories.user_repository import UserRepository
 
 # =============================================================================
