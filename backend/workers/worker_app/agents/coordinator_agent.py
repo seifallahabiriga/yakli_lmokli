@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from mesa import Model
-from mesa.time import BaseScheduler
 
 from backend.workers.worker_app.agents.advisor_agent import AdvisorAgent
 from backend.workers.worker_app.agents.classifier_agent import ClassifierAgent
@@ -18,9 +17,8 @@ AgentMode = Literal["classify", "cluster", "recommend"]
 
 class ObservatoryModel(Model):
     """
-    Mesa Model that owns the agent scheduler.
-    Instantiated with a mode — only the relevant agent is added.
-    Calling model.step() runs that agent's step() exactly once.
+    Mesa 3.5 Model — agents register themselves on the model at instantiation.
+    Calling model.step() runs step() on every registered agent via AgentSet.
     """
 
     def __init__(
@@ -31,24 +29,26 @@ class ObservatoryModel(Model):
         user_id: int | None = None,
     ) -> None:
         super().__init__()
-        self.schedule = BaseScheduler(self)
 
+        # In Mesa 3.5, Agent.__init__(model) auto-registers the agent on
+        # model.agents — no schedule.add() needed.
         if mode == "classify":
-            self.schedule.add(ClassifierAgent(self, db, cache))
+            ClassifierAgent(self, db, cache)
         elif mode == "cluster":
-            self.schedule.add(ClusterAgent(self, db, cache))
+            ClusterAgent(self, db, cache)
         elif mode == "recommend":
-            self.schedule.add(AdvisorAgent(self, db, cache, user_id=user_id))
+            AdvisorAgent(self, db, cache, user_id=user_id)
         else:
             raise ValueError(f"Unknown mode: {mode!r}")
 
     def step(self) -> None:
-        self.schedule.step()
+        # Mesa 3.5: AgentSet.do() calls the named method on every agent
+        self.agents.do("step")
 
     @property
     def result(self) -> dict:
         """Returns last_result from the single agent that ran."""
-        agents = self.schedule.agents
+        agents = list(self.agents)
         if not agents:
             return {}
         return agents[0].last_result

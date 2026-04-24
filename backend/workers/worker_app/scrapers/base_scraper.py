@@ -25,12 +25,7 @@ class BaseScraper(ABC):
         self._session = self._build_session()
 
     @abstractmethod
-    def run(self) -> list[dict]:
-        """Return raw opportunity dicts matching OpportunityCreate fields."""
-
-    # ------------------------------------------------------------------
-    # Session — for static pages only
-    # ------------------------------------------------------------------
+    def run(self) -> list[dict]: ...
 
     def _build_session(self) -> requests.Session:
         session = requests.Session()
@@ -43,21 +38,46 @@ class BaseScraper(ABC):
         adapter = HTTPAdapter(max_retries=retry)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        session.headers.update({"User-Agent": settings.SCRAPER_USER_AGENT})
+        session.headers.update({
+            "User-Agent": settings.SCRAPER_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "DNT": "1",
+            "Connection": "keep-alive",
+        })
         return session
 
-    # ------------------------------------------------------------------
-    # Playwright context — shared browser per run()
-    # ------------------------------------------------------------------
+    def _fetch_static(self, url: str) -> BeautifulSoup | None:
+        try:
+            resp = self._session.get(url, timeout=settings.SCRAPER_REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            return BeautifulSoup(resp.text, "lxml")
+        except Exception as exc:
+            logger.warning("Static fetch failed %s: %s", url, exc)
+            return None
+
+    def _fetch_rss(self, url: str) -> list[dict]:
+        """Parses an RSS/Atom feed. Returns list of {title, link, summary, published}."""
+        try:
+            import feedparser
+            feed = feedparser.parse(url)
+            return [
+                {
+                    "title": e.get("title", ""),
+                    "link": e.get("link", ""),
+                    "summary": e.get("summary", ""),
+                    "published": e.get("published", ""),
+                }
+                for e in feed.entries
+                if e.get("link")
+            ]
+        except Exception as exc:
+            logger.warning("RSS fetch failed %s: %s", url, exc)
+            return []
 
     @contextmanager
     def _browser(self):
-        """
-        Yields a Playwright BrowserContext.
-        Use inside run() so one Chromium process serves all URLs.
-        """
         from playwright.sync_api import sync_playwright
-
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=settings.SCRAPER_PLAYWRIGHT_HEADLESS,
@@ -69,8 +89,15 @@ class BaseScraper(ABC):
             )
             context = browser.new_context(
                 user_agent=settings.SCRAPER_USER_AGENT,
-                viewport={"width": 1280, "height": 800},
-                java_script_enabled=True,
+                viewport={"width": 1366, "height": 768},
+                locale="en-US",
+                timezone_id="Europe/Paris",
+                extra_http_headers={"Accept-Language": "en-US,en;q=0.9", "DNT": "1"},
+            )
+            # Remove webdriver fingerprint
+            context.add_init_script(
+                "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+                "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});"
             )
             try:
                 yield context
@@ -87,10 +114,6 @@ class BaseScraper(ABC):
         extra_wait_ms: int = 0,
         scroll: bool = False,
     ) -> BeautifulSoup | None:
-        """
-        Fetches a JS-rendered page via Playwright.
-        Blocks images/media/fonts to reduce bandwidth and latency.
-        """
         page = None
         try:
             page = context.new_page()
@@ -100,23 +123,17 @@ class BaseScraper(ABC):
                 if route.request.resource_type in ("image", "media", "font")
                 else route.continue_(),
             )
-            page.goto(
-                url,
-                timeout=settings.SCRAPER_REQUEST_TIMEOUT * 1000,
-                wait_until=wait_state,
-            )
+            page.goto(url, timeout=settings.SCRAPER_REQUEST_TIMEOUT * 1000, wait_until=wait_state)
             if wait_selector:
                 try:
-                    page.wait_for_selector(wait_selector, timeout=10000, state="visible")
+                    page.wait_for_selector(wait_selector, timeout=12000, state="visible")
                 except Exception:
                     logger.debug("Selector '%s' not found on %s", wait_selector, url)
             if extra_wait_ms:
                 page.wait_for_timeout(extra_wait_ms)
             if scroll:
                 self._scroll_to_bottom(page)
-
             return BeautifulSoup(page.content(), "lxml")
-
         except Exception as exc:
             logger.warning("Playwright fetch failed %s: %s", url, exc)
             return None
@@ -127,27 +144,10 @@ class BaseScraper(ABC):
                 except Exception:
                     pass
 
-    def _scroll_to_bottom(self, page, steps: int = 5, delay_ms: int = 800) -> None:
+    def _scroll_to_bottom(self, page, steps: int = 4, delay_ms: int = 1000) -> None:
         for i in range(1, steps + 1):
             page.evaluate(f"window.scrollTo(0, document.body.scrollHeight * {i / steps})")
             page.wait_for_timeout(delay_ms)
-
-    # ------------------------------------------------------------------
-    # Static fallback
-    # ------------------------------------------------------------------
-
-    def _fetch_static(self, url: str) -> BeautifulSoup | None:
-        try:
-            resp = self._session.get(url, timeout=settings.SCRAPER_REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            return BeautifulSoup(resp.text, "lxml")
-        except Exception as exc:
-            logger.warning("Static fetch failed %s: %s", url, exc)
-            return None
-
-    # ------------------------------------------------------------------
-    # Utilities
-    # ------------------------------------------------------------------
 
     def _polite_sleep(self, seconds: float = 2.0) -> None:
         time.sleep(seconds)

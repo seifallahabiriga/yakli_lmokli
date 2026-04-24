@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str
+    POSTGRES_USER: str = "observatory_user"
     POSTGRES_PASSWORD: str = Field(...)
-    POSTGRES_DB: str
+    POSTGRES_DB: str = "observatory"
 
     # -------------------------------------------------------------------------
     # Database URLs — computed from credentials
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
-    REDIS_PASSWORD: str
+    REDIS_PASSWORD: str = ""
     REDIS_DB_BROKER: int = 0           # Celery broker
     REDIS_DB_BACKEND: int = 1          # Celery result backend
     REDIS_DB_CACHE: int = 2            # application cache (recommendations, sessions)
