@@ -3,20 +3,13 @@ from __future__ import annotations
 import logging
 
 from backend.core.enums import OpportunityDomain, OpportunityLevel, OpportunityLocationType, OpportunityType
-from backend.workers.worker_app.scrapers.base_scraper import BaseScraper
-from backend.workers.worker_app.utils import clean_text
+from backend.workers.worker_app.scrapers.base_scraper import BaseScraper, clean_text_local as clean_text
 
 logger = logging.getLogger(__name__)
 
 
 class ScholarshipScraper(BaseScraper):
-    """
-    Sources:
-      - DAAD scholarships (static HTML, German exchange service)
-      - Scholars4Dev (static WordPress)
-      - Euraxess fellowships (Playwright)
-      - FindAPhD scholarships (Playwright)
-    """
+    """Already returning 12 items. Keep working sources, add AcademicTransfer scholarships."""
 
     SOURCE_NAME = "scholarship_scraper"
     DEFAULT_SCRAPER_TYPE = "dynamic"
@@ -24,68 +17,55 @@ class ScholarshipScraper(BaseScraper):
     def run(self) -> list[dict]:
         items: list[dict] = []
 
-        # Tier 1 — static/RSS
+        # Static — confirmed working
         items.extend(self._scrape_daad())
         self._polite_sleep(1.5)
         items.extend(self._scrape_scholars4dev())
         self._polite_sleep(1.5)
 
-        # Tier 2 — Playwright
+        # Playwright
         with self._browser() as ctx:
             items.extend(self._scrape_euraxess_fellowships(ctx))
             self._polite_sleep(2.0)
-            items.extend(self._scrape_findaphd(ctx))
+            items.extend(self._scrape_academic_transfer(ctx))
 
         return self._cap(self._dedup(items))
 
     def _scrape_daad(self) -> list[dict]:
-        """DAAD scholarship database — German academic exchange, very scraper-friendly."""
-        urls = [
-            "https://www.daad.de/en/studying-in-germany/scholarships/daad-scholarships/",
-            "https://www.daad.de/en/the-daad/what-we-do/funding-information-database/",
-        ]
         items = []
-        for url in urls:
-            soup = self._fetch_static(url)
-            if not soup:
+        soup = self._fetch_static(
+            "https://www.daad.de/en/studying-in-germany/scholarships/daad-scholarships/"
+        )
+        if not soup:
+            return []
+        for a in soup.select('a[href*="stipendium"], a[href*="scholarship"], a[href*="funding"]'):
+            href = a.get("href", "")
+            title = clean_text(a.text)
+            if not href or not title or len(title) < 8:
                 continue
-            for card in soup.select(
-                "article, div.scholarship-item, div.c-teaser, "
-                "li.scholarship, div.funding-item"
-            ):
-                try:
-                    title_el = card.select_one("h3 a, h2 a, h4 a, .c-teaser__title a, a")
-                    if not title_el:
-                        continue
-                    href = title_el.get("href", "")
-                    if not href:
-                        continue
-                    full_url = href if href.startswith("http") else f"https://www.daad.de{href}"
-                    items.append(self._build_item(
-                        title=clean_text(title_el.text, 512),
-                        organization="DAAD",
-                        url=full_url,
-                        type=OpportunityType.SCHOLARSHIP,
-                        domain=OpportunityDomain.AI,
-                        level=OpportunityLevel.MASTER,
-                        country="Germany",
-                        location_type=OpportunityLocationType.ONSITE,
-                        tags=["scholarship", "daad", "germany", "funding"],
-                        source="daad",
-                        scraper_type="static",
-                    ))
-                except Exception as exc:
-                    logger.debug("DAAD card error: %s", exc)
+            full_url = href if href.startswith("http") else f"https://www.daad.de{href}"
+            items.append(self._build_item(
+                title=title,
+                organization="DAAD",
+                url=full_url,
+                type=OpportunityType.SCHOLARSHIP,
+                domain=OpportunityDomain.AI,
+                level=OpportunityLevel.MASTER,
+                country="Germany",
+                location_type=OpportunityLocationType.ONSITE,
+                tags=["scholarship", "daad", "germany", "funding"],
+                source="daad",
+                scraper_type="static",
+            ))
         logger.info("DAAD scholarships: %d", len(items))
         return items
 
     def _scrape_scholars4dev(self) -> list[dict]:
-        """Scholars4Dev — WordPress blog, fully static, lists international scholarships."""
+        items = []
         urls = [
             "https://www.scholars4dev.com/category/scholarships-by-field/science-technology-scholarships/",
             "https://www.scholars4dev.com/category/scholarships-by-field/computer-science-scholarships/",
         ]
-        items = []
         for url in urls:
             soup = self._fetch_static(url)
             if not soup:
@@ -100,7 +80,7 @@ class ScholarshipScraper(BaseScraper):
                     if not href.startswith("http"):
                         continue
                     items.append(self._build_item(
-                        title=clean_text(title_el.text, 512),
+                        title=clean_text(title_el.text),
                         description=clean_text(excerpt_el.text, 500) if excerpt_el else None,
                         url=href,
                         type=OpportunityType.SCHOLARSHIP,
@@ -118,70 +98,63 @@ class ScholarshipScraper(BaseScraper):
         return items
 
     def _scrape_euraxess_fellowships(self, ctx) -> list[dict]:
-        pages = [
-            "https://euraxess.ec.europa.eu/jobs/search?q=fellowship+scholarship+AI+data+science",
-            "https://euraxess.ec.europa.eu/jobs/search?q=scholarship+machine+learning",
+        import re
+        queries = [
+            "fellowship+scholarship+AI+data+science",
+            "scholarship+machine+learning",
         ]
         items = []
-        for url in pages:
-            soup = self._fetch_page(ctx, url,
-                wait_selector="div.views-row, .view-content",
-                extra_wait_ms=2000)
+        for q in queries:
+            url = f"https://euraxess.ec.europa.eu/jobs/search?q={q}"
+            soup = self._fetch_page(ctx, url, extra_wait_ms=4000)
             if not soup:
                 continue
-            for card in soup.select("div.views-row, article.job"):
-                try:
-                    title_el = card.select_one("h3 a, h2 a, .views-field-title a")
-                    org_el = card.select_one(".field-name-field-org, .organisation")
-                    country_el = card.select_one(".field-name-field-country, .country")
-                    if not title_el:
-                        continue
-                    href = title_el.get("href", "")
-                    full_url = href if href.startswith("http") else f"https://euraxess.ec.europa.eu{href}"
-                    items.append(self._build_item(
-                        title=clean_text(title_el.text, 512),
-                        organization=clean_text(org_el.text, 255) if org_el else None,
-                        url=full_url,
-                        type=OpportunityType.FELLOWSHIP,
-                        domain=OpportunityDomain.AI,
-                        level=OpportunityLevel.PHD,
-                        country=clean_text(country_el.text, 100) if country_el else None,
-                        location_type=OpportunityLocationType.ONSITE,
-                        tags=["fellowship", "research", "europe", "euraxess"],
-                    ))
-                except Exception as exc:
-                    logger.debug("Euraxess fellowship error: %s", exc)
+            seen: set[str] = set()
+            for a in soup.select('a[href*="/jobs/"]'):
+                href = a.get("href", "")
+                if not href or "/jobs/search" in href or "/jobs/filter" in href:
+                    continue
+                if not re.search(r"/jobs/\d", href):
+                    continue
+                if href in seen:
+                    continue
+                seen.add(href)
+                full_url = href if href.startswith("http") else f"https://euraxess.ec.europa.eu{href}"
+                title = clean_text(a.text)
+                if not title or len(title) < 8:
+                    continue
+                items.append(self._build_item(
+                    title=title,
+                    url=full_url,
+                    type=OpportunityType.FELLOWSHIP,
+                    domain=OpportunityDomain.AI,
+                    level=OpportunityLevel.PHD,
+                    location_type=OpportunityLocationType.ONSITE,
+                    tags=["fellowship", "research", "europe", "euraxess"],
+                ))
             self._polite_sleep(1.5)
         logger.info("Euraxess fellowships: %d", len(items))
         return items
 
-    def _scrape_findaphd(self, ctx) -> list[dict]:
-        url = "https://www.findaphd.com/phds/scholarship/?Keywords=artificial+intelligence+machine+learning"
-        soup = self._fetch_page(ctx, url,
-            wait_selector="div.phd-result, div.g-mb-20",
-            extra_wait_ms=2000, scroll=True)
-        if not soup:
-            return []
+    def _scrape_academic_transfer(self, ctx) -> list[dict]:
         items = []
-        for card in soup.select("div.phd-result, div.g-mb-20"):
-            try:
-                title_el = card.select_one("h3 a, h2 a, a.h4")
-                org_el = card.select_one(".institution, .uni-link")
-                if not title_el:
-                    continue
-                href = title_el.get("href", "")
-                full_url = href if href.startswith("http") else f"https://www.findaphd.com{href}"
+        queries = ["scholarship+AI", "fellowship+machine+learning", "grant+data+science"]
+        for q in queries:
+            url = f"https://www.academictransfer.com/en/jobs/?q={q}"
+            soup = self._fetch_page(ctx, url, extra_wait_ms=3000, scroll=True)
+            if not soup:
+                continue
+            for link in self._extract_at_links(soup):
                 items.append(self._build_item(
-                    title=clean_text(title_el.text, 512),
-                    organization=clean_text(org_el.text, 255) if org_el else None,
-                    url=full_url,
+                    title=link["title"],
+                    url=link["url"],
                     type=OpportunityType.SCHOLARSHIP,
                     domain=OpportunityDomain.AI,
                     level=OpportunityLevel.PHD,
+                    country="Netherlands",
                     location_type=OpportunityLocationType.ONSITE,
-                    tags=["phd", "scholarship", "ai", "findaphd"],
+                    tags=["scholarship", "netherlands", "academic"],
                 ))
-            except Exception as exc:
-                logger.debug("FindAPhD scholarship error: %s", exc)
-        logger.info("FindAPhD scholarships: %d", len(items))
+            self._polite_sleep(1.5)
+        logger.info("AcademicTransfer scholarships: %d", len(items))
         return items

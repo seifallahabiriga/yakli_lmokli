@@ -3,8 +3,9 @@ import sys
 import json
 import subprocess
 import traceback
+import importlib
 
-# Setup colors for the terminal
+# Terminal Colors
 class Colors:
     CYAN = '\033[96m'
     GREEN = '\033[92m'
@@ -13,6 +14,7 @@ class Colors:
     GRAY = '\033[90m'
     END = '\033[0m'
 
+# Test State
 stats = {"PASS": 0, "FAIL": 0, "SKIP": 0}
 errors_list = []
 
@@ -39,113 +41,148 @@ def report_skip(label, reason):
 def run_scraper_test(name, class_name, module_path, min_expected=1):
     print(f"  {Colors.GRAY}Running {name}...{Colors.END}")
     
-    # Environment setup for the scraper
+    # Mock environment variables
     os.environ.setdefault('SECRET_KEY', 'a' * 32)
     os.environ.setdefault('POSTGRES_PASSWORD', 'test')
     sys.path.insert(0, '.')
 
     try:
-        # Dynamic import
-        import importlib
+        # Dynamic import of your project modules
         module = importlib.import_module(module_path)
         scraper_class = getattr(module, class_name)
         
         scraper = scraper_class()
         items = scraper.run()
         
+        # Validation logic from your PS1
         valid = [i for i in items if i.get('url') and i.get('title') and i.get('type')]
         count = len(items)
         valid_count = len(valid)
 
         if count >= min_expected:
-            report_pass(name, f"{valid_count} valid items out of {count} collected")
+            report_pass(name, f"{valid_count} valid / {count} collected")
         elif count > 0:
             report_skip(name, f"only {count} items (expected {min_expected}+)")
         else:
-            report_fail(name, "0 items returned — site blocked or selectors stale")
+            report_fail(name, "0 items — site blocked or selectors stale")
 
-        # Print samples
+        # Sample printing
         for s in valid[:3]:
-            print(f"    {Colors.GRAY}- {s.get('title', '')[:60]}{Colors.END}")
+            print(f"    {Colors.GRAY}+ {s.get('title', '')[:70]}{Colors.END}")
             print(f"      {Colors.GRAY}{s.get('url', '')[:80]}{Colors.END}")
+            
+        return valid_count
 
     except Exception as e:
         report_fail(name, str(e))
-        print(f"    {Colors.GRAY}{traceback.format_exc()[-300:]}{Colors.END}")
+        print(f"    {Colors.GRAY}{traceback.format_exc()[-500:]}{Colors.END}")
+        return 0
 
 # =============================================================================
-# 0. Dependency checks
+# 0. Dependencies
 # =============================================================================
 write_header("0. Dependency checks")
 
-deps = ["feedparser", "playwright", "bs4", "requests", "lxml"]
-for dep in deps:
+for dep in ["playwright", "bs4", "requests", "lxml"]:
     try:
-        __import__(dep)
+        __import__(dep if dep != "bs4" else "bs4")
         report_pass(f"import {dep}")
     except ImportError:
-        report_fail(f"import {dep}", f"not installed — run: pip install {dep}")
+        report_fail(f"import {dep}", "not installed")
 
 try:
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        browser.close()
+        b = p.chromium.launch(headless=True)
+        b.close()
     report_pass("Playwright chromium")
 except Exception as e:
     report_fail("Playwright chromium", "run: playwright install chromium")
 
 # =============================================================================
-# 1. RSS feeds
+# 1-5. Individual Scrapers + 6. KMeans Readiness
 # =============================================================================
-write_header("1. RSS feeds (static)")
-import feedparser
+write_header("1-5. Individual Scrapers")
 
-feeds = [
-    ('Nature Careers - research', 'https://www.nature.com/naturecareers/rss/jobs?type=research'),
-    ('Nature Careers - postdoc',  'https://www.nature.com/naturecareers/rss/jobs?type=postdoc'),
-    ('Nature Careers - all jobs', 'https://www.nature.com/naturecareers/rss/jobs'),
+scraper_configs = [
+    ("InternshipScraper", "InternshipScraper", "backend.workers.worker_app.scrapers.internship_scraper", 10),
+    ("ScholarshipScraper", "ScholarshipScraper", "backend.workers.worker_app.scrapers.scholarship_scraper", 12),
+    ("ProjectScraper", "ProjectScraper", "backend.workers.worker_app.scrapers.project_scraper", 5),
+    ("CertificationScraper", "CertificationScraper", "backend.workers.worker_app.scrapers.certification_scraper", 8),
+    ("PostdocScraper", "PostdocScraper", "backend.workers.worker_app.scrapers.postdoc_scraper", 10),
 ]
 
-for name, url in feeds:
+grand_total = 0
+for cfg in scraper_configs:
+    grand_total += run_scraper_test(*cfg)
+
+write_header("6. Total count + KMeans readiness check")
+print(f"  {Colors.GRAY}Total valid items across all scrapers: {grand_total}{Colors.END}")
+
+if grand_total >= 20:
+    report_pass("Total", f"{grand_total} items — KMeans will trigger on next cluster run")
+else:
+    report_skip("Total", f"{grand_total} items — need 20+ for KMeans clustering")
+
+# =============================================================================
+# 7. Celery trigger
+# =============================================================================
+write_header("7. Enqueue scraper tasks via Celery")
+
+confirm = input(f"  {Colors.YELLOW}Is Celery worker running? (y/n): {Colors.END}").lower()
+
+if confirm == 'y':
+    task_types = ["internship", "scholarship", "project", "certification", "postdoc"]
     try:
-        feed = feedparser.parse(url)
-        if len(feed.entries) > 0:
-            report_pass(f"RSS: {name}", f"{len(feed.entries)} entries")
-        else:
-            report_skip(f"RSS: {name}", "0 entries")
-    except Exception as e:
-        report_fail(f"RSS: {name}", str(e))
+        from backend.job_queue.producer import (
+            enqueue_internship_scraper, enqueue_scholarship_scraper,
+            enqueue_project_scraper, enqueue_certification_scraper,
+            enqueue_postdoc_scraper
+        )
+        # Map strings to functions
+        task_map = {
+            "internship": enqueue_internship_scraper,
+            "scholarship": enqueue_scholarship_scraper,
+            "project": enqueue_project_scraper,
+            "certification": enqueue_certification_scraper,
+            "postdoc": enqueue_postdoc_scraper
+        }
 
-# =============================================================================
-# 2-6. Individual scrapers
-# =============================================================================
-write_header("2-6. Scraper Suite")
-scrapers = [
-    ("InternshipScraper", "InternshipScraper", "backend.workers.worker_app.scrapers.internship_scraper", 5),
-    ("ScholarshipScraper", "ScholarshipScraper", "backend.workers.worker_app.scrapers.scholarship_scraper", 5),
-    ("ProjectScraper", "ProjectScraper", "backend.workers.worker_app.scrapers.project_scraper", 3),
-    ("CertificationScraper", "CertificationScraper", "backend.workers.worker_app.scrapers.certification_scraper", 3),
-    ("PostdocScraper", "PostdocScraper", "backend.workers.worker_app.scrapers.postdoc_scraper", 5),
-]
+        for t in task_types:
+            try:
+                result = task_map[t]()
+                report_pass(f"Enqueue {t} scraper", f"task={result.id}")
+            except Exception as e:
+                report_fail(f"Enqueue {t}", str(e))
+        
+        print(f"\n  {Colors.GRAY}Poll task status: GET http://localhost:8000/tasks/{{task_id}}{Colors.END}")
+        print(f"  {Colors.GRAY}Trigger pipeline: python -c \"from backend.job_queue.producer import enqueue_classifier; enqueue_classifier()\"{Colors.END}")
 
-for s in scrapers:
-    run_scraper_test(*s)
+    except ImportError as e:
+        report_fail("Celery Producer", f"Could not import producer: {e}")
+else:
+    report_skip("Celery tasks", "worker not running")
 
 # =============================================================================
 # Summary
 # =============================================================================
-total = stats["PASS"] + stats["FAIL"]
-color = Colors.GREEN if stats["FAIL"] == 0 else Colors.YELLOW
+total_tests = stats["PASS"] + stats["FAIL"]
+final_color = Colors.GREEN if stats["FAIL"] == 0 else Colors.YELLOW
 
 print(f"\n{Colors.GRAY}=================================================={Colors.END}")
-print(f"  Results: {color}{stats['PASS']}/{total} passed{Colors.END}  ({stats['SKIP']} skipped)")
+print(f"  Results: {final_color}{stats['PASS']}/{total_tests} passed{Colors.END}  ({stats['SKIP']} skipped)")
 print(f"{Colors.GRAY}=================================================={Colors.END}")
 
 if errors_list:
     print(f"\n{Colors.RED}  Failures:{Colors.END}")
     for e in errors_list:
         print(f"  {Colors.RED}{e}{Colors.END}")
+
+print(f"\n{Colors.CYAN}  Next steps after scrapers pass:{Colors.END}")
+print(f"  {Colors.GRAY}1. Run scrapers via Celery Beat (auto) or manually trigger{Colors.END}")
+print(f"  {Colors.GRAY}2. Classifier runs every 15 min — embeds new opportunities{Colors.END}")
+print(f"  {Colors.GRAY}3. Cluster runs every 12h — triggers KMeans once >= 20 items{Colors.END}")
+print(f"  {Colors.GRAY}4. Recommendations recompute every 6h with cluster context{Colors.END}\n")
 
 if stats["FAIL"] > 0:
     sys.exit(1)

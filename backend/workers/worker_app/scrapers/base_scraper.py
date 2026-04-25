@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -56,25 +57,6 @@ class BaseScraper(ABC):
             logger.warning("Static fetch failed %s: %s", url, exc)
             return None
 
-    def _fetch_rss(self, url: str) -> list[dict]:
-        """Parses an RSS/Atom feed. Returns list of {title, link, summary, published}."""
-        try:
-            import feedparser
-            feed = feedparser.parse(url)
-            return [
-                {
-                    "title": e.get("title", ""),
-                    "link": e.get("link", ""),
-                    "summary": e.get("summary", ""),
-                    "published": e.get("published", ""),
-                }
-                for e in feed.entries
-                if e.get("link")
-            ]
-        except Exception as exc:
-            logger.warning("RSS fetch failed %s: %s", url, exc)
-            return []
-
     @contextmanager
     def _browser(self):
         from playwright.sync_api import sync_playwright
@@ -94,7 +76,6 @@ class BaseScraper(ABC):
                 timezone_id="Europe/Paris",
                 extra_http_headers={"Accept-Language": "en-US,en;q=0.9", "DNT": "1"},
             )
-            # Remove webdriver fingerprint
             context.add_init_script(
                 "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
                 "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});"
@@ -152,6 +133,27 @@ class BaseScraper(ABC):
     def _polite_sleep(self, seconds: float = 2.0) -> None:
         time.sleep(seconds)
 
+    def _extract_at_links(self, soup: BeautifulSoup, base_url: str = "https://www.academictransfer.com") -> list[dict]:
+        """
+        AcademicTransfer-specific link extractor.
+        Matches /en/jobs/{id}/{slug}/ pattern confirmed from debug output.
+        """
+        seen: set[str] = set()
+        results = []
+        for a in soup.select('a[href*="/en/jobs/"]'):
+            href = a.get("href", "")
+            if not re.search(r"/en/jobs/\d+/", href):
+                continue
+            if href in seen:
+                continue
+            seen.add(href)
+            full_url = href if href.startswith("http") else f"{base_url}{href}"
+            title = clean_text_local(a.text)
+            if not title or len(title) < 8:
+                continue
+            results.append({"url": full_url, "title": title})
+        return results
+
     def _build_item(self, **kwargs) -> dict:
         base = {
             "source": self.SOURCE_NAME,
@@ -176,3 +178,10 @@ class BaseScraper(ABC):
 
     def _cap(self, items: list[dict]) -> list[dict]:
         return items[: settings.SCRAPER_MAX_RESULTS_PER_RUN]
+
+
+def clean_text_local(text: str, max_length: int = 512) -> str:
+    if not text:
+        return ""
+    import re as _re
+    return _re.sub(r"\s+", " ", text).strip()[:max_length]
