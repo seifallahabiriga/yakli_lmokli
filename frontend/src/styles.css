@@ -1,0 +1,183 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Observatory dark theme — academic meets space telescope */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-domain-ai: var(--domain-ai);
+  --color-domain-data: var(--domain-data);
+  --color-domain-ml: var(--domain-ml);
+  --color-domain-cv: var(--domain-cv);
+  --color-domain-nlp: var(--domain-nlp);
+  --color-domain-robotics: var(--domain-robotics);
+  --color-domain-cyber: var(--domain-cyber);
+  --color-domain-swe: var(--domain-swe);
+  --color-domain-de: var(--domain-de);
+  --color-domain-bio: var(--domain-bio);
+  --color-domain-other: var(--domain-other);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-glow: 0 0 30px -5px color-mix(in oklab, var(--primary) 40%, transparent);
+  --shadow-card: 0 1px 0 0 color-mix(in oklab, white 4%, transparent) inset, 0 8px 24px -12px oklch(0 0 0 / 0.6);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Deep space backgrounds */
+  --background: oklch(0.16 0.025 265);
+  --foreground: oklch(0.97 0.005 250);
+  --surface: oklch(0.20 0.028 265);
+  --surface-elevated: oklch(0.24 0.030 265);
+
+  --card: oklch(0.20 0.028 265);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.22 0.030 265);
+  --popover-foreground: oklch(0.97 0.005 250);
+
+  /* Electric blue primary */
+  --primary: oklch(0.65 0.20 255);
+  --primary-foreground: oklch(0.99 0.005 250);
+  --primary-glow: oklch(0.75 0.18 255);
+
+  --secondary: oklch(0.27 0.030 265);
+  --secondary-foreground: oklch(0.95 0.005 250);
+  --muted: oklch(0.25 0.025 265);
+  --muted-foreground: oklch(0.68 0.020 255);
+  --accent: oklch(0.70 0.16 165);
+  --accent-foreground: oklch(0.15 0.020 265);
+
+  --success: oklch(0.72 0.17 160);
+  --success-foreground: oklch(0.15 0.020 265);
+  --warning: oklch(0.78 0.16 75);
+  --warning-foreground: oklch(0.18 0.020 75);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 250);
+
+  --border: oklch(0.28 0.025 265);
+  --input: oklch(0.26 0.025 265);
+  --ring: oklch(0.65 0.20 255);
+
+  /* Domain colors */
+  --domain-ai: oklch(0.65 0.20 255);
+  --domain-data: oklch(0.72 0.15 210);
+  --domain-ml: oklch(0.65 0.22 295);
+  --domain-cv: oklch(0.70 0.17 145);
+  --domain-nlp: oklch(0.72 0.17 165);
+  --domain-robotics: oklch(0.72 0.17 50);
+  --domain-cyber: oklch(0.65 0.22 25);
+  --domain-swe: oklch(0.62 0.06 250);
+  --domain-de: oklch(0.70 0.13 195);
+  --domain-bio: oklch(0.72 0.18 350);
+  --domain-other: oklch(0.60 0.02 250);
+
+  --chart-1: oklch(0.65 0.20 255);
+  --chart-2: oklch(0.70 0.17 165);
+  --chart-3: oklch(0.78 0.16 75);
+  --chart-4: oklch(0.65 0.22 295);
+  --chart-5: oklch(0.72 0.18 350);
+
+  --sidebar: oklch(0.18 0.027 265);
+  --sidebar-foreground: oklch(0.92 0.005 250);
+  --sidebar-primary: oklch(0.65 0.20 255);
+  --sidebar-primary-foreground: oklch(0.99 0.005 250);
+  --sidebar-accent: oklch(0.24 0.028 265);
+  --sidebar-accent-foreground: oklch(0.97 0.005 250);
+  --sidebar-border: oklch(0.26 0.025 265);
+  --sidebar-ring: oklch(0.65 0.20 255);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Subtle starfield background on app surface */
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 40%),
+      radial-gradient(circle at 80% 80%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 45%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  .glow-border {
+    box-shadow: var(--shadow-glow);
+  }
+  .card-elevated {
+    box-shadow: var(--shadow-card);
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+}
